@@ -421,6 +421,29 @@ mod test {
     }
 
     #[test]
+    fn test_dup_put_get_del() {
+        let dir = TempDir::new("test").unwrap();
+        let env = Environment::new().open(dir.path()).unwrap();
+        let db = env.create_db(None, DUP_SORT).unwrap();
+
+        let mut txn = env.begin_rw_txn().unwrap();
+        txn.put(db, b"key1", b"val1", NO_DUP_DATA).unwrap();
+        txn.put(db, b"key1", b"val2", NO_DUP_DATA).unwrap();
+        txn.put(db, b"key1", b"val3", NO_DUP_DATA).unwrap();
+        txn.commit().unwrap();
+
+        let ro_tx = env.begin_ro_txn().unwrap();
+
+        let val = ro_tx.get(db, b"key1").unwrap().to_owned();
+        ro_tx.commit().unwrap();
+
+        let mut txn = env.begin_rw_txn().unwrap();
+
+        txn.del(db, b"key1", Some(&val.as_slice())).unwrap();
+        assert_eq!(txn.get(db, b"key1").unwrap(), b"val2");
+    }
+
+    #[test]
     fn test_reserve() {
         let dir = TempDir::new("test").unwrap();
         let env = Environment::new().open(dir.path()).unwrap();
